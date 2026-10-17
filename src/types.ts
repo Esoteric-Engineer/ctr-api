@@ -7,6 +7,7 @@ export type Bindings = {
   BETTER_AUTH_URL: string
   ADMIN_DISCORD_IDS: string
   CDN_BASE: string
+  LOCAL_FILES?: string
 }
 
 export type SessionUser = {
