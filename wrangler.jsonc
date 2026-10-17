@@ -2,11 +2,12 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "ctr-api",
 	"main": "src/index.ts",
+	"compatibility_flags": ["nodejs_compat"],
 	"compatibility_date": "2026-10-17",
   "routes": [{ "pattern": "api.customteamracing.com", "custom_domain": true }],
 	"d1_databases": [
 		{
-			"binding": "ctr_api_db",
+			"binding": "DB",
 			"database_name": "ctr-api-db",
 			"database_id": "71d45ba4-095b-4bce-9eaa-446f534b8689"
 		}
@@ -14,11 +15,12 @@
 	"r2_buckets": [
 		{
 			"bucket_name": "ctr-files",
-			"binding": "ctr_files"
+			"binding": "FILES"
 		}
 	],
 	"vars": {
-	  "CDN_BASE": "https://cdn.customteamracing.com"
+	  "CDN_BASE": "https://cdn.customteamracing.com",
+	  "BETTER_AUTH_URL": "https://api.customteamracing.com"
 	},
 	"observability": {
 	  "enabled": true,
