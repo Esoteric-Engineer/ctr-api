@@ -21,3 +21,23 @@ export type AppEnv = {
   Bindings: Bindings
   Variables: { user: SessionUser | null }
 }
+
+export type Meta = {
+  name: string
+  description: string
+  creatorName: string
+  createdDate: string
+}
+
+export type TrackRow = {
+  id: string
+  name: string
+  description: string
+  creator_name: string
+  uploaded_by_name: string
+  created_date: string
+  uploaded_at: string
+  lev_key: string
+  vrm_key: string
+  sca_key: string
+}
