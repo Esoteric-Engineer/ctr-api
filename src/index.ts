@@ -15,7 +15,7 @@ import type { FileKind, Preview } from './validate';
 
 const intParam = (value: string | undefined, fallback: number) => {
   const n = Number(value);
-  return value !== undefined && Number.isSafeInteger(n) ? n : fallback;
+  return value?.trim() && Number.isSafeInteger(n) ? n : fallback;
 }
 
 const readJsonObject = async (ctx: Context): Promise<Record<string, unknown> | null> => {
@@ -93,7 +93,8 @@ const cdnBase =(base: string) => base.replace(/\/$/, '');
 ////////////// Public API //////////////
 
 app.get('/docs', csp('docs'), (ctx) => ctx.html(docsPage()))
-app.get('/openapi.json', cors(), (ctx) => ctx.json(openApiSpec))
+app.use('/openapi.json', cors())
+app.get('/openapi.json', (ctx) => ctx.json(openApiSpec))
 
 app.get('/health', async (ctx) => {
   ctx.header('Cache-Control', 'no-store');
@@ -107,8 +108,9 @@ app.get('/health', async (ctx) => {
 })
 
 const v1 = new Hono<AppEnv>();
+v1.use('/tracks/*', cors());
 
-v1.get('/tracks', cors(), async (ctx) => {
+v1.get('/tracks', async (ctx) => {
   const limit = Math.min(Math.max(intParam(ctx.req.query('limit'), 50), 1), 100);
   const offset = Math.max(intParam(ctx.req.query('offset'), 0), 0);
 
@@ -116,7 +118,7 @@ v1.get('/tracks', cors(), async (ctx) => {
 })
 
 // Must be registered before /tracks/:id, or "search" is treated as an id.
-v1.get('/tracks/search', cors(), async (ctx) => {
+v1.get('/tracks/search', async (ctx) => {
   const name = ctx.req.query('name')?.trim();
   const creator = ctx.req.query('creator')?.trim();
   if (!name && !creator) return ctx.json({ error: 'Provide at least one of "name" or "creator"' }, 400);
@@ -139,7 +141,7 @@ v1.get('/tracks/search', cors(), async (ctx) => {
   return trackPage(ctx, ` WHERE ${conditions.join(' AND ')}`, params, limit, offset);
 })
 
-v1.get('/tracks/:id', cors(), async (ctx) => {
+v1.get('/tracks/:id', async (ctx) => {
   const row = await ctx.env.DB.prepare('SELECT * FROM tracks WHERE id = ?')
     .bind(ctx.req.param('id'))
     .first<TrackRow>();
