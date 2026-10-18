@@ -6,6 +6,8 @@ import type { AppEnv, Meta, TrackRow } from './types';
 import { auth, loadUser, guard } from './auth';
 import { adminPage, docsPage, homePage, submitPage, uploadPage } from './pages';
 import { openApiSpec } from './openapi';
+import { FILE_RULES, checkFile, checkSca } from './validate';
+import type { FileKind } from './validate';
 
 
 ////////////// Helper Functions //////////////
@@ -28,7 +30,11 @@ const toTrack = (r: TrackRow, cdn: string) => ({
   uploadedBy: r.uploaded_by_name,
   uploadedDate: r.uploaded_at,
   createdDate: r.created_date,
-  files: { lev: `${cdn}/${r.lev_key}`, vrm: `${cdn}/${r.vrm_key}`, sca: `${cdn}/${r.sca_key}` },
+  files: {
+    lev: `${cdn}/${r.lev_key}`,
+    vrm: r.vrm_key ? `${cdn}/${r.vrm_key}` : null,
+    sca: r.sca_key ? `${cdn}/${r.sca_key}` : null,
+  },
 })
 
 const isValidDate = (s: string) => {
@@ -114,6 +120,68 @@ creator.use('*', loadUser);
 
 creator.get('/', guard('creator'), (ctx) => ctx.html(uploadPage(ctx.get('user')!)));
 
+const maxUploadBytes = Object.values(FILE_RULES).reduce((sum, rule) => sum + rule.maxBytes, 64 * 1024);
+
+creator.post('/', guard('creator'), async (ctx) => {
+  if (Number(ctx.req.header('content-length') ?? 0) > maxUploadBytes) return ctx.json({ error: 'Upload is too large' }, 413);
+
+  const form = await ctx.req.formData().catch(() => null);
+  if (!form) return ctx.json({ error: 'Body must be multipart form data' }, 400);
+
+  const text = (key: string) => {
+    const value = form.get(key);
+    return typeof value === 'string' ? value.trim() : '';
+  }
+  const meta: Meta = {
+    name: text('name'),
+    description: text('description'),
+    creatorName: text('creatorName'),
+    createdDate: text('createdDate'),
+  };
+  const problem = validateMeta(meta);
+  if (problem) return ctx.json({ error: problem }, 400);
+
+  const files: Partial<Record<FileKind, ArrayBuffer>> = {};
+  for (const kind of Object.keys(FILE_RULES) as FileKind[]) {
+    const value = form.get(kind);
+    if (!(value instanceof File) || value.size === 0) {
+      if (FILE_RULES[kind].required) return ctx.json({ error: `A .${kind} file is required` }, 400);
+      continue;
+    }
+    const fileProblem = checkFile(kind, value);
+    if (fileProblem) return ctx.json({ error: fileProblem }, 400);
+    const buf = await value.arrayBuffer();
+    const contentProblem = kind === 'sca' ? checkSca(buf) : null;
+    if (contentProblem) return ctx.json({ error: contentProblem }, 400);
+    files[kind] = buf;
+  }
+
+  const id = crypto.randomUUID();
+  const keys: Partial<Record<FileKind, string>> = {};
+  try {
+    for (const [kind, buf] of Object.entries(files) as [FileKind, ArrayBuffer][]) {
+      const key = `tracks/${id}.${kind}`;
+      await ctx.env.FILES.put(key, buf, { httpMetadata: { contentType: 'application/octet-stream' } });
+      keys[kind] = key;
+    }
+
+    const user = ctx.get('user')!;
+    await ctx.env.DB.prepare(
+      `INSERT INTO tracks (id, name, description, creator_name, uploaded_by_id, uploaded_by_name, created_date, uploaded_at, lev_key, vrm_key, sca_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+      .bind(id, meta.name, meta.description, meta.creatorName, user.id, user.username, meta.createdDate,
+        new Date().toISOString(), keys.lev, keys.vrm ?? null, keys.sca ?? null)
+      .run();
+  } catch (err) {
+    console.error('Upload failed', id, err);
+    await ctx.env.FILES.delete(Object.values(keys)).catch(() => {});
+    return ctx.json({ error: 'Upload failed, please try again' }, 500);
+  }
+
+  return ctx.json({ id });
+})
+
 app.route('/upload', creator)
 
 
@@ -177,15 +245,16 @@ admin.delete('/api/tracks/:id', async (ctx) => {
   const id = ctx.req.param('id');
   const row = await ctx.env.DB.prepare('SELECT lev_key, vrm_key, sca_key FROM tracks WHERE id = ?')
     .bind(id)
-    .first<{ lev_key: string; vrm_key: string; sca_key: string }>();
+    .first<Pick<TrackRow, 'lev_key' | 'vrm_key' | 'sca_key'>>();
   if (!row) return ctx.json({ error: 'Track not found' }, 404);
+  const keys = [row.lev_key, row.vrm_key, row.sca_key].filter((key): key is string => !!key);
 
   // Kill the row first. If it fails, this just leaves orphaned files rather than a track with dead URLs.
   await ctx.env.DB.prepare('DELETE FROM tracks WHERE id = ?').bind(id).run();
   try {
-    await ctx.env.FILES.delete([row.lev_key, row.vrm_key, row.sca_key]);
+    await ctx.env.FILES.delete(keys);
   } catch (err) {
-    console.error('Orphaned R2 objects after deleting track', id, [row.lev_key, row.vrm_key, row.sca_key], err);
+    console.error('Orphaned R2 objects after deleting track', id, keys, err);
   }
   return ctx.json({ ok: true });
 })
