@@ -4,7 +4,8 @@ import { cors } from 'hono/cors'
 import { csrf } from 'hono/csrf'
 import type { AppEnv, Meta, TrackRow } from './types';
 import { auth, loadUser, guard } from './auth';
-import { adminPage, homePage, uploadPage } from './pages';
+import { adminPage, docsPage, homePage, uploadPage } from './pages';
+import { openApiSpec } from './openapi';
 
 
 ////////////// Helper Functions //////////////
@@ -59,6 +60,9 @@ const cdnBase = (base: string) => base.replace(/\/$/, '');
 
 
 ////////////// Public API //////////////
+
+app.get('/docs', (ctx) => ctx.html(docsPage()))
+app.get('/openapi.json', cors(), (ctx) => ctx.json(openApiSpec))
 
 app.get('/tracks', cors(), async (ctx) => {
   const limit = Math.min(Math.max(intParam(ctx.req.query('limit'), 50), 1), 100);

@@ -100,14 +100,14 @@ const layout = (title: string, nav: unknown, body: unknown) => html`<!doctype ht
 
 const guestNav = html`<header class="topbar"><div class="topbar-inner">
   <a class="brand" href="/">Custom Team Racing API</a>
-  <nav class="nav-links"><a href="/tracks">Tracks</a></nav>
+  <nav class="nav-links"><a href="/docs">Docs</a></nav>
   <div class="nav-user"><a class="with-icon" href="/auth/login">${discordLogo} Log in with Discord</a></div>
 </div></header>`
 
 const nav = (u: SessionUser) => html`<header class="topbar"><div class="topbar-inner">
   <a class="brand" href="/">Custom Team Racing API</a>
   <nav class="nav-links">
-    <a href="/tracks">Tracks</a>
+    <a href="/docs">Docs</a>
     ${u.approved || u.isAdmin ? html`<a href="/upload">Upload</a>` : ''}
     ${u.isAdmin ? html`<a href="/admin">Admin</a>` : ''}
   </nav>
@@ -125,7 +125,20 @@ export const homePage = (u: SessionUser | null) =>
     </div>
   </section>`)
 
-export const pendingPage = (u: SessionUser) =>
+const SWAGGER_VERSION = '5.17.14'
+
+export const docsPage = () => html`<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Docs - Custom Team Racing API</title>
+<link rel="icon" type="image/webp" href="/favicon.webp">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@${SWAGGER_VERSION}/swagger-ui.css" integrity="sha384-wxLW6kwyHktdDGr6Pv1zgm/VGJh99lfUbzSn6HNHBENZlCN7W602k9VkGdxuFvPn" crossorigin="anonymous">
+<style>body{margin:0}</style></head><body>
+<div id="swagger-ui"></div>
+<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@${SWAGGER_VERSION}/swagger-ui-bundle.js" integrity="sha384-wmyclcVGX/WhUkdkATwhaK1X1JtiNrr2EoYJ+diV3vj4v6OC5yCeSu+yW13SYJep" crossorigin="anonymous"></script>
+<script>SwaggerUIBundle({ url: '/openapi.json', dom_id: '#swagger-ui' });</script>
+</body></html>`
+
+export const pendingPage =(u: SessionUser) =>
   layout('Pending approval', nav(u), html`<div class="panel">
     <h1>Waiting for approval</h1>
     <p>You're logged in, but an admin hasn't approved your account for uploads yet.
