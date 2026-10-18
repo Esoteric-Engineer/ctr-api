@@ -31,7 +31,7 @@ export const CSS = `
   h3{font-size:1.05rem;margin:0}
   p{margin:.5rem 0 1rem}
   code{font:.88em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:.1em .4em}
-  .topbar{background:var(--surface);border-bottom:1px solid var(--border);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+  .topbar{position:relative;z-index:10;background:var(--surface);border-bottom:1px solid var(--border);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
   .topbar-inner{max-width:860px;margin:0 auto;padding:.7rem 1rem;display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap}
   .brand{font-weight:800;letter-spacing:-.02em;color:var(--text);text-decoration:none;font-size:1.1rem}
   .brand span{color:var(--accent)}
@@ -39,8 +39,18 @@ export const CSS = `
   .nav-links a{color:var(--muted);text-decoration:none;padding:.35rem .7rem;border-radius:8px;font-weight:500}
   .nav-links a:hover{background:var(--surface-2);color:var(--text)}
   .nav-user{display:flex;align-items:center;gap:.75rem;color:var(--muted);font-size:.92rem}
-  .nav-user b{color:var(--text)}
-  .nav-user form{margin:0}
+  .user-menu{position:relative}
+  .user-menu summary{list-style:none;cursor:pointer;display:block;border-radius:50%}
+  .user-menu summary::-webkit-details-marker{display:none}
+  .user-menu summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .avatar{display:block;width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--surface-2);border:1px solid var(--border)}
+  .user-menu summary:hover .avatar,.user-menu[open] .avatar{border-color:var(--accent)}
+  .avatar-fallback{display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--text)}
+  .user-menu-panel{position:absolute;right:0;top:calc(100% + .5rem);min-width:12rem;padding:.9rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+  .user-menu-panel .signed-in{font-size:.8rem;color:var(--muted)}
+  .user-menu-panel b{display:block;color:var(--text);font-size:1rem;margin-bottom:.75rem;overflow-wrap:anywhere}
+  .user-menu-panel form{margin:0}
+  .user-menu-panel button{width:100%}
   main{max-width:860px;margin:0 auto;padding:2rem 1rem 4rem}
   main>.hero{margin-top:1rem}
   .lead{color:var(--muted);font-size:1.05rem}
@@ -112,8 +122,17 @@ const nav = (u: SessionUser) => html`<header class="topbar"><div class="topbar-i
     ${u.approved || u.isAdmin ? html`<a href="/upload">Upload</a>` : ''}
     ${u.isAdmin ? html`<a href="/admin">Admin</a>` : ''}
   </nav>
-  <div class="nav-user"><span>Signed in as <b>${u.username}</b></span>
-    <form method="post" action="/auth/logout"><button class="ghost">Log out</button></form></div>
+  <div class="nav-user">
+    <details class="user-menu">
+      <summary aria-label="Account menu for ${u.username}">${u.avatarUrl
+        ? html`<img class="avatar" src="${u.avatarUrl}" alt="" width="36" height="36" referrerpolicy="no-referrer">`
+        : html`<span class="avatar avatar-fallback" aria-hidden="true">${[...u.username][0]?.toUpperCase() ?? '?'}</span>`}</summary>
+      <div class="user-menu-panel">
+        <span class="signed-in">Signed in as</span><b>${u.username}</b>
+        <form method="post" action="/auth/logout"><button class="ghost">Log out</button></form>
+      </div>
+    </details>
+  </div>
 </div></header>`
 
 export const homePage = (u: SessionUser | null) =>

@@ -14,6 +14,7 @@ export type SessionUser = {
   id: string
   discordId: string
   username: string
+  avatarUrl: string | null
   approved: boolean
   isAdmin: boolean
 }

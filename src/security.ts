@@ -17,7 +17,7 @@ const hash = async (text: string) => {
 const buildPolicies = async () => {
   const shared = "default-src 'none'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
   return {
-    app: `${shared}; script-src ${await hash(UPLOAD_JS)} ${await hash(ADMIN_JS)}; style-src ${await hash(CSS)}; img-src 'self'`,
+    app: `${shared}; script-src ${await hash(UPLOAD_JS)} ${await hash(ADMIN_JS)}; style-src ${await hash(CSS)}; img-src 'self' https://cdn.discordapp.com`,
     docs: `${shared}; script-src ${SWAGGER_BASE} ${await hash(DOCS_JS)}; style-src ${SWAGGER_BASE} ${await hash(DOCS_CSS)}; img-src 'self' data:`,
   }
 }

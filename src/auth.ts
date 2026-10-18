@@ -30,6 +30,11 @@ auth.post('/auth/logout', async (c) => {
   return redirectWithCookies(c, '/', headers, 303)
 })
 
+const discordAvatar = (image: string | null | undefined) => {
+  if (!image?.startsWith('https://cdn.discordapp.com/')) return null
+  return `${image}?size=64`
+}
+
 export const loadUser: MiddlewareHandler<AppEnv> = async (c, next) => {
   c.set('user', null)
   const session = await getAuth(c.env).api.getSession({ headers: c.req.raw.headers })
@@ -44,6 +49,7 @@ export const loadUser: MiddlewareHandler<AppEnv> = async (c, next) => {
         id: user.id,
         discordId: account.accountId,
         username: user.name,
+        avatarUrl: discordAvatar(user.image),
         approved: user.approved,
         isAdmin: admins.includes(account.accountId),
       })
