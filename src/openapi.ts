@@ -72,6 +72,64 @@ export const openApiSpec = {
         },
       },
     },
+    '/tracks/search': {
+      get: {
+        summary: 'Search tracks',
+        description:
+          'Returns tracks whose name and/or creator name contain the given text, ordered by upload date, newest first. ' +
+          'Matching is case-insensitive for ASCII letters. At least one of `name` or `creator` is required; if both are given, a track must match both.',
+        operationId: 'searchTracks',
+        parameters: [
+          {
+            name: 'name',
+            in: 'query',
+            description: 'Text to look for in the track name.',
+            schema: { type: 'string', maxLength: 100 },
+          },
+          {
+            name: 'creator',
+            in: 'query',
+            description: 'Text to look for in the creator name.',
+            schema: { type: 'string', maxLength: 100 },
+          },
+          {
+            name: 'limit',
+            in: 'query',
+            description: 'Maximum number of tracks to return. Out-of-range values are clamped to 1–100.',
+            schema: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
+          },
+          {
+            name: 'offset',
+            in: 'query',
+            description: 'Number of tracks to skip. Negative values are treated as 0.',
+            schema: { type: 'integer', minimum: 0, default: 0 },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'A page of matching tracks (possibly empty).',
+            headers: { 'Cache-Control': { schema: { type: 'string', example: 'public, max-age=60' } } },
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['tracks', 'limit', 'offset'],
+                  properties: {
+                    tracks: { type: 'array', items: { $ref: '#/components/schemas/Track' } },
+                    limit: { type: 'integer', description: 'The limit that was applied.' },
+                    offset: { type: 'integer', description: 'The offset that was applied.' },
+                  },
+                },
+              },
+            },
+          },
+          '400': {
+            description: 'Neither `name` nor `creator` was provided, or a search term is longer than 100 characters.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
+          },
+        },
+      },
+    },
     '/tracks/{id}': {
       get: {
         summary: 'Get a track',

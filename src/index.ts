@@ -38,7 +38,9 @@ const toTrack = (r: TrackRow, cdn: string) => ({
   },
 })
 
-const isValidDate = (s: string) => {
+const likePattern = (term: string) => `%${term.replace(/[\\%_]/g, '\\$&')}%`;
+
+const isValidDate =(s: string) => {
   const d = new Date(s);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
@@ -80,6 +82,37 @@ app.get('/tracks', cors(), async (ctx) => {
 
   const { results } = await ctx.env.DB.prepare('SELECT * FROM tracks ORDER BY uploaded_at DESC LIMIT ?1 OFFSET ?2')
     .bind(limit, offset)
+    .all<TrackRow>();
+  ctx.header('Cache-Control', 'public, max-age=60');
+
+  return ctx.json({ tracks: results.map((rslt) => toTrack(rslt, cdnBase(ctx.env.CDN_BASE))), limit, offset });
+})
+
+// Must be registered before /tracks/:id, or "search" is treated as an id.
+app.get('/tracks/search', cors(), async (ctx) => {
+  const name = ctx.req.query('name')?.trim();
+  const creator = ctx.req.query('creator')?.trim();
+  if (!name && !creator) return ctx.json({ error: 'Provide at least one of "name" or "creator"' }, 400);
+  if ((name?.length ?? 0) > 100 || (creator?.length ?? 0) > 100) return ctx.json({ error: 'Search terms are too long (max 100 characters)' }, 400);
+
+  const limit = Math.min(Math.max(intParam(ctx.req.query('limit'), 50), 1), 100);
+  const offset = Math.max(intParam(ctx.req.query('offset'), 0), 0);
+
+  const conditions: string[] = [];
+  const params: (string | number)[] = [];
+  if (name) {
+    conditions.push(`name LIKE ? ESCAPE '\\'`);
+    params.push(likePattern(name));
+  }
+  if (creator) {
+    conditions.push(`creator_name LIKE ? ESCAPE '\\'`);
+    params.push(likePattern(creator));
+  }
+
+  const { results } = await ctx.env.DB.prepare(
+    `SELECT * FROM tracks WHERE ${conditions.join(' AND ')} ORDER BY uploaded_at DESC LIMIT ? OFFSET ?`,
+  )
+    .bind(...params, limit, offset)
     .all<TrackRow>();
   ctx.header('Cache-Control', 'public, max-age=60');
 

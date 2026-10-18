@@ -11,7 +11,7 @@ Track metadata lives in D1 and track files live in R2. Creators log in with Disc
 
 | Route | Who | What |
 |---|---|---|
-| `/tracks`, `/tracks/:id` | Everyone | Read-only JSON API (CORS enabled) |
+| `/tracks`, `/tracks/search`, `/tracks/:id` | Everyone | Read-only JSON API (CORS enabled) |
 | `/docs` | Everyone | Swagger UI for the public API |
 | `/submit` | Everyone | How to become a creator |
 | `/upload` | Approved creators | Upload a track (`.lev` required, `.vrm` and `.sca` optional) |
