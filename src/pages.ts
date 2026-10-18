@@ -144,7 +144,7 @@ export const homePage = (u: SessionUser | null) =>
     <h1>Custom Team Racing API</h1>
     <p class="lead">An API for Crash Team Racing custom tracks and other custom content.</p>
     <div class="actions">
-      <a class="btn-link" href="/tracks">Browse the Docs</a>
+      <a class="btn-link" href="/docs">View the Docs</a>
       ${u && (u.approved || u.isAdmin)
         ? html`<a class="btn-link ghost" href="/upload">Upload a track</a>`
         : html`<a class="btn-link ghost" href="/submit">Submit Content</a>`}
