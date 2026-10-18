@@ -7,7 +7,7 @@ const discordLogo = raw(`
   </svg>
 `)
 
-const CSS = `
+export const CSS = `
   :root{
     color-scheme:light dark;
     --bg:#f4f1ec;--bg-overlay:rgba(244,241,236,.12);
@@ -149,16 +149,19 @@ export const submitPage = (u: SessionUser | null) =>
   </section>`)
 
 const SWAGGER_VERSION = '5.17.14'
+export const SWAGGER_BASE = `https://cdn.jsdelivr.net/npm/swagger-ui-dist@${SWAGGER_VERSION}/`
+export const DOCS_CSS = 'body{margin:0}'
+export const DOCS_JS = "SwaggerUIBundle({ url: '/openapi.json', dom_id: '#swagger-ui' });"
 
 export const docsPage = () => html`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Docs - Custom Team Racing API</title>
 <link rel="icon" type="image/webp" href="/favicon.webp">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@${SWAGGER_VERSION}/swagger-ui.css" integrity="sha384-wxLW6kwyHktdDGr6Pv1zgm/VGJh99lfUbzSn6HNHBENZlCN7W602k9VkGdxuFvPn" crossorigin="anonymous">
-<style>body{margin:0}</style></head><body>
+<link rel="stylesheet" href="${SWAGGER_BASE}swagger-ui.css" integrity="sha384-wxLW6kwyHktdDGr6Pv1zgm/VGJh99lfUbzSn6HNHBENZlCN7W602k9VkGdxuFvPn" crossorigin="anonymous">
+<style>${raw(DOCS_CSS)}</style></head><body>
 <div id="swagger-ui"></div>
-<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@${SWAGGER_VERSION}/swagger-ui-bundle.js" integrity="sha384-wmyclcVGX/WhUkdkATwhaK1X1JtiNrr2EoYJ+diV3vj4v6OC5yCeSu+yW13SYJep" crossorigin="anonymous"></script>
-<script>SwaggerUIBundle({ url: '/openapi.json', dom_id: '#swagger-ui' });</script>
+<script src="${SWAGGER_BASE}swagger-ui-bundle.js" integrity="sha384-wmyclcVGX/WhUkdkATwhaK1X1JtiNrr2EoYJ+diV3vj4v6OC5yCeSu+yW13SYJep" crossorigin="anonymous"></script>
+<script>${raw(DOCS_JS)}</script>
 </body></html>`
 
 export const pendingPage =(u: SessionUser) =>
@@ -172,7 +175,7 @@ export const forbiddenPage = (u: SessionUser) =>
     <h1>Admins only</h1>
     <p>Your account doesn't have access to this page.</p></div>`)
 
-const UPLOAD_JS = `
+export const UPLOAD_JS = `
 document.getElementById('f').addEventListener('submit', async function (e) {
   e.preventDefault();
   var msg = document.getElementById('msg');
@@ -204,7 +207,7 @@ export const uploadPage = (u: SessionUser) =>
   </form>
   <script>${raw(UPLOAD_JS)}</script>`)
 
-const ADMIN_JS = `
+export const ADMIN_JS = `
 async function api(method, url, body) {
   var res = await fetch(url, { method: method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
   var data = await res.json().catch(function () { return {}; });

@@ -7,6 +7,7 @@ import { auth, loadUser, guard } from './auth';
 import { adminPage, docsPage, homePage, submitPage, uploadPage } from './pages';
 import { openApiSpec } from './openapi';
 import { FILE_RULES, checkFile, checkSca } from './validate';
+import { baseHeaders, csp } from './security';
 import type { FileKind } from './validate';
 
 
@@ -56,6 +57,7 @@ function validateMeta(meta: Meta): string | null {
 ////////////// Setup //////////////
 
 const app = new Hono<AppEnv>()
+app.use('*', baseHeaders, csp('app'))
 app.use('*', csrf())
 
 app.route('/', auth)
@@ -69,7 +71,7 @@ const cdnBase =(base: string) => base.replace(/\/$/, '');
 
 ////////////// Public API //////////////
 
-app.get('/docs', (ctx) => ctx.html(docsPage()))
+app.get('/docs', csp('docs'), (ctx) => ctx.html(docsPage()))
 app.get('/openapi.json', cors(), (ctx) => ctx.json(openApiSpec))
 
 app.get('/tracks', cors(), async (ctx) => {
