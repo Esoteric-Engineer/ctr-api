@@ -6,7 +6,7 @@ import type { AppEnv, Meta, TrackRow } from './types';
 import { auth, loadUser, guard } from './auth';
 import { adminPage, docsPage, homePage, submitPage, uploadPage } from './pages';
 import { openApiSpec } from './openapi';
-import { FILE_RULES, checkFile, checkSca } from './validate';
+import { FILE_RULES, checkFile, checkSca, sha256Hex } from './validate';
 import { baseHeaders, csp } from './security';
 import type { FileKind } from './validate';
 
@@ -32,9 +32,9 @@ const toTrack = (r: TrackRow, cdn: string) => ({
   uploadedDate: r.uploaded_at,
   createdDate: r.created_date,
   files: {
-    lev: `${cdn}/${r.lev_key}`,
-    vrm: r.vrm_key ? `${cdn}/${r.vrm_key}` : null,
-    sca: r.sca_key ? `${cdn}/${r.sca_key}` : null,
+    lev: { url: `${cdn}/${r.lev_key}`, size: r.lev_size, sha256: r.lev_sha256 },
+    vrm: r.vrm_key ? { url: `${cdn}/${r.vrm_key}`, size: r.vrm_size, sha256: r.vrm_sha256 } : null,
+    sca: r.sca_key ? { url: `${cdn}/${r.sca_key}`, size: r.sca_size, sha256: r.sca_sha256 } : null,
   },
 })
 
@@ -181,6 +181,7 @@ creator.post('/', guard('creator'), async (ctx) => {
   if (problem) return ctx.json({ error: problem }, 400);
 
   const files: Partial<Record<FileKind, ArrayBuffer>> = {};
+  const hashes: Partial<Record<FileKind, string>> = {};
   for (const kind of Object.keys(FILE_RULES) as FileKind[]) {
     const value = form.get(kind);
     if (!(value instanceof File) || value.size === 0) {
@@ -193,6 +194,7 @@ creator.post('/', guard('creator'), async (ctx) => {
     const contentProblem = kind === 'sca' ? checkSca(buf) : null;
     if (contentProblem) return ctx.json({ error: contentProblem }, 400);
     files[kind] = buf;
+    hashes[kind] = await sha256Hex(buf);
   }
 
   const id = crypto.randomUUID();
@@ -206,11 +208,15 @@ creator.post('/', guard('creator'), async (ctx) => {
 
     const user = ctx.get('user')!;
     await ctx.env.DB.prepare(
-      `INSERT INTO tracks (id, name, description, creator_name, uploaded_by_id, uploaded_by_name, created_date, uploaded_at, lev_key, vrm_key, sca_key)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tracks (id, name, description, creator_name, uploaded_by_id, uploaded_by_name, created_date, uploaded_at,
+         lev_key, lev_size, lev_sha256, vrm_key, vrm_size, vrm_sha256, sca_key, sca_size, sca_sha256)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
       .bind(id, meta.name, meta.description, meta.creatorName, user.id, user.username, meta.createdDate,
-        new Date().toISOString(), keys.lev, keys.vrm ?? null, keys.sca ?? null)
+        new Date().toISOString(),
+        keys.lev, files.lev!.byteLength, hashes.lev,
+        keys.vrm ?? null, files.vrm?.byteLength ?? null, hashes.vrm ?? null,
+        keys.sca ?? null, files.sca?.byteLength ?? null, hashes.sca ?? null)
       .run();
   } catch (err) {
     console.error('Upload failed', id, err);

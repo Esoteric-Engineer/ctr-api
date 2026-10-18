@@ -60,7 +60,13 @@ CREATE TABLE tracks (
   created_date     TEXT NOT NULL,   -- YYYY-MM-DD, set by the uploader
   uploaded_at      TEXT NOT NULL,   -- ISO timestamp, set by the server
   lev_key          TEXT NOT NULL,
+  lev_size         INTEGER NOT NULL,
+  lev_sha256       TEXT NOT NULL,
   vrm_key          TEXT,
-  sca_key          TEXT
+  vrm_size         INTEGER,
+  vrm_sha256       TEXT,
+  sca_key          TEXT,
+  sca_size         INTEGER,
+  sca_sha256       TEXT
 );
 CREATE INDEX idx_tracks_uploaded_at ON tracks(uploaded_at DESC);

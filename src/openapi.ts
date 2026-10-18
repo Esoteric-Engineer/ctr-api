@@ -1,5 +1,15 @@
 // OpenAPI 3.0 description of the public (unauthenticated) API. Keep in sync with the routes in index.ts.
 
+const trackFile = {
+  type: 'object',
+  required: ['url', 'size', 'sha256'],
+  properties: {
+    url: { type: 'string', format: 'uri', description: 'Download URL.' },
+    size: { type: 'integer', description: 'File size in bytes.' },
+    sha256: { type: 'string', pattern: '^[0-9a-f]{64}$', description: 'SHA-256 of the file, lowercase hex.' },
+  },
+}
+
 const track = {
   type: 'object',
   required: ['id', 'name', 'description', 'creatorName', 'uploadedBy', 'uploadedDate', 'createdDate', 'files'],
@@ -15,9 +25,9 @@ const track = {
       type: 'object',
       required: ['lev', 'vrm', 'sca'],
       properties: {
-        lev: { type: 'string', format: 'uri', description: 'URL of the .lev file.' },
-        vrm: { type: 'string', format: 'uri', nullable: true, description: 'URL of the .vrm file, or null if not provided.' },
-        sca: { type: 'string', format: 'uri', nullable: true, description: 'URL of the .sca file, or null if not provided.' },
+        lev: { $ref: '#/components/schemas/TrackFile', description: 'The .lev file.' },
+        vrm: { allOf: [{ $ref: '#/components/schemas/TrackFile' }], nullable: true, description: 'The .vrm file, or null if not provided.' },
+        sca: { allOf: [{ $ref: '#/components/schemas/TrackFile' }], nullable: true, description: 'The .sca file, or null if not provided.' },
       },
     },
   },
@@ -152,6 +162,7 @@ export const openApiSpec = {
   components: {
     schemas: {
       Track: track,
+      TrackFile: trackFile,
       Error: {
         type: 'object',
         required: ['error'],

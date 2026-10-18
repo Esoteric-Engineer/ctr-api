@@ -13,6 +13,9 @@ export const checkFile = (kind: FileKind, file: File): string | null => {
   return null;
 }
 
+export const sha256Hex = async (buf: ArrayBuffer): Promise<string> =>
+  Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', buf)), (b) => b.toString(16).padStart(2, '0')).join('');
+
 const SCA_CHUNK_CAPS: Record<string, number> = { BANK: 0x64000, CSEQ: 0xc000, SIZE: 512, META: 4096 }
 
 export const checkSca = (buf: ArrayBuffer): string | null => {
