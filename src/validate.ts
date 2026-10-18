@@ -98,11 +98,11 @@ export const checkSca = (buf: ArrayBuffer): string | null => {
     if (offset + 8 > buf.byteLength) return 'Invalid .sca file: truncated chunk header';
     const tag = ascii(offset, 4);
     const size = view.getUint32(offset + 4, true);
-    if (!Object.hasOwn(SCA_CHUNK_CAPS, tag)) return 'Invalid .sca file: unknown chunk';
-    if (chunks.has(tag)) return `Invalid .sca file: duplicate ${tag} chunk`;
-    if (size > SCA_CHUNK_CAPS[tag]) return `Invalid .sca file: ${tag} chunk is too large`;
+    const known = Object.hasOwn(SCA_CHUNK_CAPS, tag);
+    if (known && chunks.has(tag)) return `Invalid .sca file: duplicate ${tag} chunk`;
+    if (known && size > SCA_CHUNK_CAPS[tag]) return `Invalid .sca file: ${tag} chunk is too large`;
     if (offset + 8 + size > buf.byteLength) return `Invalid .sca file: ${tag} chunk runs past end of file`;
-    chunks.set(tag, { offset: offset + 8, size });
+    if (known) chunks.set(tag, { offset: offset + 8, size });
     offset += 8 + size + (-size & 3);
   }
 
