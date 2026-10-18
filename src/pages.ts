@@ -193,9 +193,12 @@ export const uploadPage = (u: SessionUser) =>
       <label>Creator name <input name="creatorName" required maxlength="100" value="${u.username}"></label>
       <label>Date the track was created <input name="createdDate" type="date" required></label>
       <label class="full">.lev file <input name="lev" type="file" accept=".lev" required></label>
-      <label class="full">.vrm file <input name="vrm" type="file" accept=".vrm" required></label>
-      <label class="full">.sca file <input name="sca" type="file" accept=".sca" required></label>
+      <label class="full">.vrm file (optional) <input name="vrm" type="file" accept=".vrm"></label>
+      <label class="full">.sca file (optional) <input name="sca" type="file" accept=".sca"></label>
     </div>
+    <p class="meta">Unfamiliar with .sca files? See the
+      <a href="https://github.com/Garma1337/howl-editor/blob/main/documentation/formats/sca.md" target="_blank">.sca format documentation</a>.
+      <a href="https://customteamracing.com/discord" target="_blank">Join our Discord server</a> if you have questions.</p>
     <div class="actions"><button type="submit">Upload</button></div>
     <div id="msg" class="msg" role="status"></div>
   </form>

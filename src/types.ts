@@ -39,6 +39,6 @@ export type TrackRow = {
   created_date: string
   uploaded_at: string
   lev_key: string
-  vrm_key: string
-  sca_key: string
+  vrm_key: string | null
+  sca_key: string | null
 }

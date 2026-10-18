@@ -16,8 +16,8 @@ const track = {
       required: ['lev', 'vrm', 'sca'],
       properties: {
         lev: { type: 'string', format: 'uri', description: 'URL of the .lev file.' },
-        vrm: { type: 'string', format: 'uri', description: 'URL of the .vrm file.' },
-        sca: { type: 'string', format: 'uri', description: 'URL of the .sca file.' },
+        vrm: { type: 'string', format: 'uri', nullable: true, description: 'URL of the .vrm file, or null if not provided.' },
+        sca: { type: 'string', format: 'uri', nullable: true, description: 'URL of the .sca file, or null if not provided.' },
       },
     },
   },
