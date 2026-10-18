@@ -265,7 +265,7 @@ async function loadUsers() {
   });
 }
 async function loadTracks() {
-  var data = await (await fetch('/tracks?limit=100')).json();
+  var data = await (await fetch('/v1/tracks?limit=100')).json();
   var box = document.getElementById('tracks');
   box.replaceChildren();
   if (!data.tracks.length) box.appendChild(h('p', { className: 'empty', text: 'No tracks uploaded yet.' }));

@@ -30,7 +30,7 @@ export const openApiSpec = {
     version: '1.0.0',
     description: 'Public, read-only API for Crash Team Racing custom tracks. CORS is enabled for all origins.',
   },
-  servers: [{ url: '/' }],
+  servers: [{ url: '/v1' }],
   paths: {
     '/tracks': {
       get: {

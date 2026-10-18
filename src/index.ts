@@ -76,7 +76,9 @@ const cdnBase =(base: string) => base.replace(/\/$/, '');
 app.get('/docs', csp('docs'), (ctx) => ctx.html(docsPage()))
 app.get('/openapi.json', cors(), (ctx) => ctx.json(openApiSpec))
 
-app.get('/tracks', cors(), async (ctx) => {
+const v1 = new Hono<AppEnv>();
+
+v1.get('/tracks', cors(), async (ctx) => {
   const limit = Math.min(Math.max(intParam(ctx.req.query('limit'), 50), 1), 100);
   const offset = Math.max(intParam(ctx.req.query('offset'), 0), 0);
 
@@ -89,7 +91,7 @@ app.get('/tracks', cors(), async (ctx) => {
 })
 
 // Must be registered before /tracks/:id, or "search" is treated as an id.
-app.get('/tracks/search', cors(), async (ctx) => {
+v1.get('/tracks/search', cors(), async (ctx) => {
   const name = ctx.req.query('name')?.trim();
   const creator = ctx.req.query('creator')?.trim();
   if (!name && !creator) return ctx.json({ error: 'Provide at least one of "name" or "creator"' }, 400);
@@ -119,7 +121,7 @@ app.get('/tracks/search', cors(), async (ctx) => {
   return ctx.json({ tracks: results.map((rslt) => toTrack(rslt, cdnBase(ctx.env.CDN_BASE))), limit, offset });
 })
 
-app.get('/tracks/:id', cors(), async (ctx) => {
+v1.get('/tracks/:id', cors(), async (ctx) => {
   const row = await ctx.env.DB.prepare('SELECT * FROM tracks WHERE id = ?')
     .bind(ctx.req.param('id'))
     .first<TrackRow>();
@@ -128,6 +130,8 @@ app.get('/tracks/:id', cors(), async (ctx) => {
 
   return ctx.json(toTrack(row, cdnBase(ctx.env.CDN_BASE)));
 })
+
+app.route('/v1', v1)
 
 // only for local dev
 app.get('/files/*', async (ctx) => {
