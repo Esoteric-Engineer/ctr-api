@@ -52,6 +52,15 @@ Track metadata lives in D1 and track files live in R2. Creators log in with Disc
 
    The site runs at <http://localhost:8787>. Local D1 and R2 data are stored in `.wrangler/`.
 
+## Testing
+
+```sh
+npm test            # run once
+npm run test:watch  # rerun on changes
+```
+
+Tests run inside the Workers runtime via [`@cloudflare/vitest-plugin`](https://developers.cloudflare.com/workers/testing/vitest-integration/), against in-memory D1 and R2 that are reset before every test.
+
 ## Deployment
 
 Initial setup (once):
