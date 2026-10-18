@@ -87,6 +87,17 @@ const cdnBase =(base: string) => base.replace(/\/$/, '');
 app.get('/docs', csp('docs'), (ctx) => ctx.html(docsPage()))
 app.get('/openapi.json', cors(), (ctx) => ctx.json(openApiSpec))
 
+app.get('/health', async (ctx) => {
+  ctx.header('Cache-Control', 'no-store');
+  try {
+    await ctx.env.DB.prepare('SELECT 1').first();
+  } catch (err) {
+    console.error('Health check failed', err);
+    return ctx.json({ status: 'error' }, 503);
+  }
+  return ctx.json({ status: 'ok' });
+})
+
 const v1 = new Hono<AppEnv>();
 
 v1.get('/tracks', cors(), async (ctx) => {
