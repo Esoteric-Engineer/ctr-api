@@ -38,6 +38,17 @@ const toTrack = (r: TrackRow, cdn: string) => ({
   },
 })
 
+const trackPage = async (ctx: Context<AppEnv>, where: string, params: (string | number)[], limit: number, offset: number) => {
+  const [count, page] = await ctx.env.DB.batch([
+    ctx.env.DB.prepare(`SELECT COUNT(*) AS total FROM tracks${where}`).bind(...params),
+    ctx.env.DB.prepare(`SELECT * FROM tracks${where} ORDER BY uploaded_at DESC LIMIT ? OFFSET ?`).bind(...params, limit, offset),
+  ]);
+  const total = (count.results[0] as { total: number }).total;
+  ctx.header('Cache-Control', 'public, max-age=60');
+
+  return ctx.json({ tracks: (page.results as TrackRow[]).map((rslt) => toTrack(rslt, cdnBase(ctx.env.CDN_BASE))), total, limit, offset });
+}
+
 const likePattern = (term: string) => `%${term.replace(/[\\%_]/g, '\\$&')}%`;
 
 const isValidDate =(s: string) => {
@@ -82,12 +93,7 @@ v1.get('/tracks', cors(), async (ctx) => {
   const limit = Math.min(Math.max(intParam(ctx.req.query('limit'), 50), 1), 100);
   const offset = Math.max(intParam(ctx.req.query('offset'), 0), 0);
 
-  const { results } = await ctx.env.DB.prepare('SELECT * FROM tracks ORDER BY uploaded_at DESC LIMIT ?1 OFFSET ?2')
-    .bind(limit, offset)
-    .all<TrackRow>();
-  ctx.header('Cache-Control', 'public, max-age=60');
-
-  return ctx.json({ tracks: results.map((rslt) => toTrack(rslt, cdnBase(ctx.env.CDN_BASE))), limit, offset });
+  return trackPage(ctx, '', [], limit, offset);
 })
 
 // Must be registered before /tracks/:id, or "search" is treated as an id.
@@ -111,14 +117,7 @@ v1.get('/tracks/search', cors(), async (ctx) => {
     params.push(likePattern(creator));
   }
 
-  const { results } = await ctx.env.DB.prepare(
-    `SELECT * FROM tracks WHERE ${conditions.join(' AND ')} ORDER BY uploaded_at DESC LIMIT ? OFFSET ?`,
-  )
-    .bind(...params, limit, offset)
-    .all<TrackRow>();
-  ctx.header('Cache-Control', 'public, max-age=60');
-
-  return ctx.json({ tracks: results.map((rslt) => toTrack(rslt, cdnBase(ctx.env.CDN_BASE))), limit, offset });
+  return trackPage(ctx, ` WHERE ${conditions.join(' AND ')}`, params, limit, offset);
 })
 
 v1.get('/tracks/:id', cors(), async (ctx) => {

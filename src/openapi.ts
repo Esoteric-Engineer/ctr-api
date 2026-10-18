@@ -69,9 +69,10 @@ export const openApiSpec = {
               'application/json': {
                 schema: {
                   type: 'object',
-                  required: ['tracks', 'limit', 'offset'],
+                  required: ['tracks', 'total', 'limit', 'offset'],
                   properties: {
                     tracks: { type: 'array', items: { $ref: '#/components/schemas/Track' } },
+                    total: { type: 'integer', description: 'Number of tracks matching the request, ignoring limit and offset' },
                     limit: { type: 'integer', description: 'The limit that was applied.' },
                     offset: { type: 'integer', description: 'The offset that was applied.' },
                   },
@@ -123,9 +124,10 @@ export const openApiSpec = {
               'application/json': {
                 schema: {
                   type: 'object',
-                  required: ['tracks', 'limit', 'offset'],
+                  required: ['tracks', 'total', 'limit', 'offset'],
                   properties: {
                     tracks: { type: 'array', items: { $ref: '#/components/schemas/Track' } },
+                    total: { type: 'integer', description: 'Number of tracks matching the request, ignoring limit and offset' },
                     limit: { type: 'integer', description: 'The limit that was applied.' },
                     offset: { type: 'integer', description: 'The offset that was applied.' },
                   },
