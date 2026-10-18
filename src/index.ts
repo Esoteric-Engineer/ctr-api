@@ -4,7 +4,7 @@ import { cors } from 'hono/cors'
 import { csrf } from 'hono/csrf'
 import type { AppEnv, Meta, TrackRow } from './types';
 import { auth, loadUser, guard } from './auth';
-import { adminPage, docsPage, homePage, uploadPage } from './pages';
+import { adminPage, docsPage, homePage, submitPage, uploadPage } from './pages';
 import { openApiSpec } from './openapi';
 
 
@@ -56,7 +56,9 @@ app.route('/', auth)
 
 app.get('/', loadUser, (ctx) => ctx.html(homePage(ctx.get('user'))))
 
-const cdnBase = (base: string) => base.replace(/\/$/, '');
+app.get('/submit', loadUser, (ctx) => ctx.html(submitPage(ctx.get('user'))))
+
+const cdnBase =(base: string) => base.replace(/\/$/, '');
 
 
 ////////////// Public API //////////////

@@ -100,14 +100,15 @@ const layout = (title: string, nav: unknown, body: unknown) => html`<!doctype ht
 
 const guestNav = html`<header class="topbar"><div class="topbar-inner">
   <a class="brand" href="/">Custom Team Racing API</a>
-  <nav class="nav-links"><a href="/docs">Docs</a></nav>
-  <div class="nav-user"><a class="with-icon" href="/auth/login">${discordLogo} Log in with Discord</a></div>
+  <nav class="nav-links"><a href="/docs">Docs</a><a href="/submit">Submit</a></nav>
+  <div class="nav-user"><a class="with-icon" href="/auth/login">${discordLogo} Log In</a></div>
 </div></header>`
 
 const nav = (u: SessionUser) => html`<header class="topbar"><div class="topbar-inner">
   <a class="brand" href="/">Custom Team Racing API</a>
   <nav class="nav-links">
     <a href="/docs">Docs</a>
+    <a href="/submit">Submit</a>
     ${u.approved || u.isAdmin ? html`<a href="/upload">Upload</a>` : ''}
     ${u.isAdmin ? html`<a href="/admin">Admin</a>` : ''}
   </nav>
@@ -120,8 +121,30 @@ export const homePage = (u: SessionUser | null) =>
     <h1>Custom Team Racing API</h1>
     <p class="lead">An API for Crash Team Racing custom tracks and other custom content.</p>
     <div class="actions">
-      <a class="btn-link" href="/tracks">Browse tracks</a>
-      ${u ? (u.approved || u.isAdmin ? html`<a class="btn-link ghost" href="/upload">Upload a track</a>` : '') : ''}
+      <a class="btn-link" href="/tracks">Browse the Docs</a>
+      ${u && (u.approved || u.isAdmin)
+        ? html`<a class="btn-link ghost" href="/upload">Upload a track</a>`
+        : html`<a class="btn-link ghost" href="/submit">Submit Content</a>`}
+    </div>
+  </section>`)
+
+export const submitPage = (u: SessionUser | null) =>
+  layout('Submit content - Custom Team Racing API', u ? nav(u) : guestNav, html`<section class="panel">
+    <h1>Submit content</h1>
+    <p class="lead">Want to add your own custom track to the API? Here's how.</p>
+    <ol>
+      <li><b>Get approved.</b> Uploading is limited to approved creators. Ask a site admin in the
+        <a href="https://customteamracing.com/discord">Custom Team Racing Discord server</a> to approve you.</li>
+      <li><b>Sign in.</b> Log in to the CTR API with your Discord account.</li>
+      <li><b>Upload.</b> Once you're approved, the Upload page will appear and you can submit your files.</li>
+    </ol>
+    <div class="actions">
+      ${u
+        ? (u.approved || u.isAdmin
+          ? html`<a class="btn-link" href="/upload">Go to Upload</a>`
+          : html`<a class="btn-link" href="https://customteamracing.com/discord">Join the Discord</a>`)
+        : html`<a class="btn-link with-icon" href="/auth/login">${discordLogo} Log In</a>
+          <a class="btn-link ghost" href="https://customteamracing.com/discord">Join the Discord</a>`}
     </div>
   </section>`)
 
