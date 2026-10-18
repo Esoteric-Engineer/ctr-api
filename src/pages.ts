@@ -62,6 +62,16 @@ export const CSS = `
   .panel .card{background:var(--surface-2);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
   .card{padding:1.25rem;margin:1rem 0}
   .card-head{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.25rem}
+  .track{margin:.6rem 0;padding:0}
+  .track>summary{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:.8rem 1.25rem;cursor:pointer;list-style:none;border-radius:14px}
+  .track>summary::-webkit-details-marker{display:none}
+  .track>summary::before{content:"";flex:none;width:.5rem;height:.5rem;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .12s}
+  .track[open]>summary::before{transform:rotate(45deg)}
+  .track>summary:hover{background:var(--surface)}
+  .track>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .track-title{flex:1;min-width:0;overflow-wrap:anywhere}
+  .track-creator{color:var(--muted);font-size:.9rem}
+  .track-body{padding:0 1.25rem 1.25rem;border-top:1px solid var(--border)}
   .meta{color:var(--muted);font-size:.9rem;margin:.75rem 0 0}
   label{display:block;margin:1rem 0 0;font-weight:600;font-size:.92rem}
   label>input,label>textarea{margin-top:.35rem}
@@ -265,8 +275,11 @@ async function loadUsers() {
   });
 }
 async function loadTracks() {
-  var data = await (await fetch('/v1/tracks?limit=100')).json();
+  // The public API is cached for 60s; bypass the cache so edits and deletes show up right away.
+  var data = await (await fetch('/v1/tracks?limit=100', { cache: 'no-store' })).json();
   var box = document.getElementById('tracks');
+  var wasOpen = {};
+  box.querySelectorAll('details[open]').forEach(function (d) { wasOpen[d.dataset.id] = true; });
   box.replaceChildren();
   if (!data.tracks.length) box.appendChild(h('p', { className: 'empty', text: 'No tracks uploaded yet.' }));
   data.tracks.forEach(function (t) {
@@ -277,23 +290,32 @@ async function loadTracks() {
       f[key] = input;
       return h('label', { text: label }, [input]);
     }
-    box.appendChild(h('div', { className: 'card' }, [
-      h('div', { className: 'card-head' }, [h('h3', { text: t.name }), h('code', { text: t.id })]),
-      field('Track name', 'name'), field('Description', 'description', 'textarea'),
-      h('div', { className: 'grid' }, [field('Creator name', 'creatorName'), field('Created date', 'createdDate', 'date')]),
-      h('p', { className: 'meta', text: 'Uploaded by ' + t.uploadedBy + ' on ' + t.uploadedDate }),
-      h('div', { className: 'actions' }, [
-      h('button', { text: 'Save', onclick: async function () {
-        await api('PATCH', '/admin/api/tracks/' + t.id, { name: f.name.value, description: f.description.value, creatorName: f.creatorName.value, createdDate: f.createdDate.value });
-        alert('Saved');
-      } }),
-      h('button', { className: 'danger', text: 'Delete', onclick: async function () {
-        if (!confirm('Delete "' + t.name + '" and its files?')) return;
-        await api('DELETE', '/admin/api/tracks/' + t.id);
-        loadTracks();
-      } })
+    var title = h('h3', { className: 'track-title', text: t.name });
+    var creator = h('span', { className: 'track-creator', text: 'by ' + t.creatorName });
+    var card = h('details', { className: 'card track' }, [
+      h('summary', {}, [title, creator, h('code', { text: t.id })]),
+      h('div', { className: 'track-body' }, [
+        field('Track name', 'name'), field('Description', 'description', 'textarea'),
+        h('div', { className: 'grid' }, [field('Creator name', 'creatorName'), field('Created date', 'createdDate', 'date')]),
+        h('p', { className: 'meta', text: 'Uploaded by ' + t.uploadedBy + ' on ' + t.uploadedDate }),
+        h('div', { className: 'actions' }, [
+          h('button', { text: 'Save', onclick: async function () {
+            await api('PATCH', '/admin/api/tracks/' + t.id, { name: f.name.value, description: f.description.value, creatorName: f.creatorName.value, createdDate: f.createdDate.value });
+            title.textContent = f.name.value;
+            creator.textContent = 'by ' + f.creatorName.value;
+            alert('Saved');
+          } }),
+          h('button', { className: 'danger', text: 'Delete', onclick: async function () {
+            if (!confirm('Delete "' + t.name + '" and its files?')) return;
+            await api('DELETE', '/admin/api/tracks/' + t.id);
+            loadTracks();
+          } })
+        ])
       ])
-    ]));
+    ]);
+    card.dataset.id = t.id;
+    card.open = !!wasOpen[t.id];
+    box.appendChild(card);
   });
 }
 loadUsers(); loadTracks();`
