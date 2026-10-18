@@ -6,9 +6,9 @@ import type { AppEnv, Meta, TrackRow } from './types';
 import { auth, loadUser, guard } from './auth';
 import { adminPage, docsPage, homePage, submitPage, uploadPage } from './pages';
 import { openApiSpec } from './openapi';
-import { FILE_RULES, checkFile, checkSca, sha256Hex } from './validate';
+import { FILE_RULES, PREVIEW_RULES, checkFile, checkSca, readPreview, sha256Hex } from './validate';
 import { baseHeaders, csp } from './security';
-import type { FileKind } from './validate';
+import type { FileKind, Preview } from './validate';
 
 
 ////////////// Helper Functions //////////////
@@ -36,7 +36,15 @@ const toTrack = (r: TrackRow, cdn: string) => ({
     vrm: r.vrm_key ? { url: `${cdn}/${r.vrm_key}`, size: r.vrm_size, sha256: r.vrm_sha256 } : null,
     sca: r.sca_key ? { url: `${cdn}/${r.sca_key}`, size: r.sca_size, sha256: r.sca_sha256 } : null,
   },
+  previewImage: r.preview_key
+    ? { url: `${cdn}/${r.preview_key}`, contentType: r.preview_type, width: r.preview_width, height: r.preview_height, size: r.preview_size, sha256: r.preview_sha256 }
+    : null,
 })
+
+const previewKey = (id: string, p: Preview) => `tracks/${id}-preview-${p.sha256.slice(0, 12)}.${p.ext}`;
+
+const putPreview = (env: AppEnv['Bindings'], key: string, p: Preview) =>
+  env.FILES.put(key, p.buf, { httpMetadata: { contentType: p.type } });
 
 const trackPage = async (ctx: Context<AppEnv>, where: string, params: (string | number)[], limit: number, offset: number) => {
   const [count, page] = await ctx.env.DB.batch([
@@ -158,7 +166,7 @@ app.get('/files/*', async (ctx) => {
   const obj = await ctx.env.FILES.get(key);
   if (!obj) return ctx.notFound();
 
-  return new Response(obj.body, { headers: { 'Content-Type': 'application/octet-stream', ETag: obj.httpEtag } });
+  return new Response(obj.body, { headers: { 'Content-Type': obj.httpMetadata?.contentType ?? 'application/octet-stream', ETag: obj.httpEtag } });
 })
 
 
@@ -169,7 +177,7 @@ creator.use('*', loadUser);
 
 creator.get('/', guard('creator'), (ctx) => ctx.html(uploadPage(ctx.get('user')!)));
 
-const maxUploadBytes = Object.values(FILE_RULES).reduce((sum, rule) => sum + rule.maxBytes, 64 * 1024);
+const maxUploadBytes = Object.values(FILE_RULES).reduce((sum, rule) => sum + rule.maxBytes, PREVIEW_RULES.maxBytes + 64 * 1024);
 
 creator.post('/', guard('creator'), async (ctx) => {
   if (Number(ctx.req.header('content-length') ?? 0) > maxUploadBytes) return ctx.json({ error: 'Upload is too large' }, 413);
@@ -207,26 +215,42 @@ creator.post('/', guard('creator'), async (ctx) => {
     hashes[kind] = await sha256Hex(buf);
   }
 
+  let preview: Preview | null = null;
+  const previewValue = form.get('preview');
+  if (previewValue instanceof File && previewValue.size > 0) {
+    const result = await readPreview(previewValue);
+    if (typeof result === 'string') return ctx.json({ error: result }, 400);
+    preview = result;
+  }
+
   const id = crypto.randomUUID();
-  const keys: Partial<Record<FileKind, string>> = {};
+  const keys: Partial<Record<FileKind | 'preview', string>> = {};
   try {
     for (const [kind, buf] of Object.entries(files) as [FileKind, ArrayBuffer][]) {
       const key = `tracks/${id}.${kind}`;
       await ctx.env.FILES.put(key, buf, { httpMetadata: { contentType: 'application/octet-stream' } });
       keys[kind] = key;
     }
+    if (preview) {
+      const key = previewKey(id, preview);
+      await putPreview(ctx.env, key, preview);
+      keys.preview = key;
+    }
 
     const user = ctx.get('user')!;
     await ctx.env.DB.prepare(
       `INSERT INTO tracks (id, name, description, creator_name, uploaded_by_id, uploaded_by_name, created_date, uploaded_at,
-         lev_key, lev_size, lev_sha256, vrm_key, vrm_size, vrm_sha256, sca_key, sca_size, sca_sha256)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         lev_key, lev_size, lev_sha256, vrm_key, vrm_size, vrm_sha256, sca_key, sca_size, sca_sha256,
+         preview_key, preview_type, preview_size, preview_width, preview_height, preview_sha256)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
       .bind(id, meta.name, meta.description, meta.creatorName, user.id, user.username, meta.createdDate,
         new Date().toISOString(),
         keys.lev, files.lev!.byteLength, hashes.lev,
         keys.vrm ?? null, files.vrm?.byteLength ?? null, hashes.vrm ?? null,
-        keys.sca ?? null, files.sca?.byteLength ?? null, hashes.sca ?? null)
+        keys.sca ?? null, files.sca?.byteLength ?? null, hashes.sca ?? null,
+        keys.preview ?? null, preview?.type ?? null, preview?.buf.byteLength ?? null,
+        preview?.width ?? null, preview?.height ?? null, preview?.sha256 ?? null)
       .run();
   } catch (err) {
     console.error('Upload failed', id, err);
@@ -298,11 +322,11 @@ admin.patch('/api/tracks/:id', async (ctx) => {
 
 admin.delete('/api/tracks/:id', async (ctx) => {
   const id = ctx.req.param('id');
-  const row = await ctx.env.DB.prepare('SELECT lev_key, vrm_key, sca_key FROM tracks WHERE id = ?')
+  const row = await ctx.env.DB.prepare('SELECT lev_key, vrm_key, sca_key, preview_key FROM tracks WHERE id = ?')
     .bind(id)
-    .first<Pick<TrackRow, 'lev_key' | 'vrm_key' | 'sca_key'>>();
+    .first<Pick<TrackRow, 'lev_key' | 'vrm_key' | 'sca_key' | 'preview_key'>>();
   if (!row) return ctx.json({ error: 'Track not found' }, 404);
-  const keys = [row.lev_key, row.vrm_key, row.sca_key].filter((key): key is string => !!key);
+  const keys = [row.lev_key, row.vrm_key, row.sca_key, row.preview_key].filter((key): key is string => !!key);
 
   // Kill the row first. If it fails, this just leaves orphaned files rather than a track with dead URLs.
   await ctx.env.DB.prepare('DELETE FROM tracks WHERE id = ?').bind(id).run();
@@ -310,6 +334,73 @@ admin.delete('/api/tracks/:id', async (ctx) => {
     await ctx.env.FILES.delete(keys);
   } catch (err) {
     console.error('Orphaned R2 objects after deleting track', id, keys, err);
+  }
+  return ctx.json({ ok: true });
+})
+
+admin.put('/api/tracks/:id/preview', async (ctx) => {
+  if (Number(ctx.req.header('content-length') ?? 0) > PREVIEW_RULES.maxBytes + 64 * 1024) return ctx.json({ error: 'Upload is too large' }, 413);
+
+  const id = ctx.req.param('id');
+  const row = await ctx.env.DB.prepare('SELECT preview_key FROM tracks WHERE id = ?')
+    .bind(id)
+    .first<Pick<TrackRow, 'preview_key'>>();
+  if (!row) return ctx.json({ error: 'Track not found' }, 404);
+
+  const form = await ctx.req.formData().catch(() => null);
+  if (!form) return ctx.json({ error: 'Body must be multipart form data' }, 400);
+  const value = form.get('preview');
+  if (!(value instanceof File) || value.size === 0) return ctx.json({ error: 'A preview image is required' }, 400);
+  const preview = await readPreview(value);
+  if (typeof preview === 'string') return ctx.json({ error: preview }, 400);
+
+  // An identical re-upload reuses the key the row already points at.
+  const key = previewKey(id, preview);
+  const discardNew = () => key === row.preview_key ? Promise.resolve() : ctx.env.FILES.delete(key).catch(() => {});
+  let changes: number;
+  try {
+    await putPreview(ctx.env, key, preview);
+    const res = await ctx.env.DB.prepare(
+      `UPDATE tracks SET preview_key = ?, preview_type = ?, preview_size = ?, preview_width = ?, preview_height = ?, preview_sha256 = ?
+       WHERE id = ?`,
+    )
+      .bind(key, preview.type, preview.buf.byteLength, preview.width, preview.height, preview.sha256, id)
+      .run();
+    changes = res.meta.changes;
+  } catch (err) {
+    console.error('Preview upload failed', id, err);
+    await discardNew();
+    return ctx.json({ error: 'Upload failed, please try again' }, 500);
+  }
+  if (!changes) {
+    await discardNew();
+    return ctx.json({ error: 'Track not found' }, 404);
+  }
+
+  if (row.preview_key && row.preview_key !== key) {
+    await ctx.env.FILES.delete(row.preview_key).catch((err) => console.error('Orphaned R2 object after replacing preview', id, row.preview_key, err));
+  }
+  return ctx.json({ ok: true });
+})
+
+admin.delete('/api/tracks/:id/preview', async (ctx) => {
+  const id = ctx.req.param('id');
+  const row = await ctx.env.DB.prepare('SELECT preview_key FROM tracks WHERE id = ?')
+    .bind(id)
+    .first<Pick<TrackRow, 'preview_key'>>();
+  if (!row) return ctx.json({ error: 'Track not found' }, 404);
+  if (!row.preview_key) return ctx.json({ ok: true });
+
+  await ctx.env.DB.prepare(
+    `UPDATE tracks SET preview_key = NULL, preview_type = NULL, preview_size = NULL, preview_width = NULL, preview_height = NULL, preview_sha256 = NULL
+     WHERE id = ? AND preview_key = ?`,
+  )
+    .bind(id, row.preview_key)
+    .run();
+  try {
+    await ctx.env.FILES.delete(row.preview_key);
+  } catch (err) {
+    console.error('Orphaned R2 object after removing preview', id, row.preview_key, err);
   }
   return ctx.json({ ok: true });
 })

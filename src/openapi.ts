@@ -10,9 +10,22 @@ const trackFile = {
   },
 }
 
+const previewImage = {
+  type: 'object',
+  required: ['url', 'contentType', 'width', 'height', 'size', 'sha256'],
+  properties: {
+    url: { type: 'string', format: 'uri', description: 'Image URL.' },
+    contentType: { type: 'string', enum: ['image/png', 'image/jpeg'] },
+    width: { type: 'integer', minimum: 160, maximum: 1920, description: 'Width in pixels.' },
+    height: { type: 'integer', minimum: 90, maximum: 1080, description: 'Height in pixels.' },
+    size: { type: 'integer', maximum: 1048576, description: 'File size in bytes.' },
+    sha256: { type: 'string', pattern: '^[0-9a-f]{64}$', description: 'SHA-256 of the file, lowercase hex.' },
+  },
+}
+
 const track = {
   type: 'object',
-  required: ['id', 'name', 'description', 'creatorName', 'uploadedBy', 'uploadedDate', 'createdDate', 'files'],
+  required: ['id', 'name', 'description', 'creatorName', 'uploadedBy', 'uploadedDate', 'createdDate', 'files', 'previewImage'],
   properties: {
     id: { type: 'string', description: 'Unique track id.' },
     name: { type: 'string', maxLength: 100 },
@@ -29,6 +42,11 @@ const track = {
         vrm: { allOf: [{ $ref: '#/components/schemas/TrackFile' }], nullable: true, description: 'The .vrm file, or null if not provided.' },
         sca: { allOf: [{ $ref: '#/components/schemas/TrackFile' }], nullable: true, description: 'The .sca file, or null if not provided.' },
       },
+    },
+    previewImage: {
+      allOf: [{ $ref: '#/components/schemas/PreviewImage' }],
+      nullable: true,
+      description: 'A preview image of the track (PNG or JPEG), or null if there is none.',
     },
   },
 }
@@ -165,6 +183,7 @@ export const openApiSpec = {
     schemas: {
       Track: track,
       TrackFile: trackFile,
+      PreviewImage: previewImage,
       Error: {
         type: 'object',
         required: ['error'],

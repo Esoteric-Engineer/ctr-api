@@ -14,10 +14,10 @@ const hash = async (text: string) => {
   return `'sha256-${btoa(String.fromCharCode(...new Uint8Array(digest)))}'`
 }
 
-const buildPolicies = async () => {
+const buildPolicies = async (cdnOrigin: string) => {
   const shared = "default-src 'none'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
   return {
-    app: `${shared}; script-src ${await hash(UPLOAD_JS)} ${await hash(ADMIN_JS)}; style-src ${await hash(CSS)}; img-src 'self' https://cdn.discordapp.com`,
+    app: `${shared}; script-src ${await hash(UPLOAD_JS)} ${await hash(ADMIN_JS)}; style-src ${await hash(CSS)}; img-src 'self' https://cdn.discordapp.com ${cdnOrigin}`,
     docs: `${shared}; script-src ${SWAGGER_BASE} ${await hash(DOCS_JS)}; style-src ${SWAGGER_BASE} ${await hash(DOCS_CSS)}; img-src 'self' data:`,
   }
 }
@@ -27,6 +27,6 @@ let policies: ReturnType<typeof buildPolicies> | undefined
 export const csp = (name: 'app' | 'docs'): MiddlewareHandler<AppEnv> => async (ctx, next) => {
   await next()
   if (ctx.res.headers.has('Content-Security-Policy')) return
-  policies ??= buildPolicies()
+  policies ??= buildPolicies(new URL(ctx.env.CDN_BASE).origin)
   ctx.res.headers.set('Content-Security-Policy', (await policies)[name])
 }

@@ -48,4 +48,10 @@ export type TrackRow = {
   sca_key: string | null
   sca_size: number | null
   sca_sha256: string | null
+  preview_key: string | null
+  preview_type: string | null
+  preview_size: number | null
+  preview_width: number | null
+  preview_height: number | null
+  preview_sha256: string | null
 }

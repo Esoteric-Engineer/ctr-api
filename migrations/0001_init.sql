@@ -67,6 +67,12 @@ CREATE TABLE tracks (
   vrm_sha256       TEXT,
   sca_key          TEXT,
   sca_size         INTEGER,
-  sca_sha256       TEXT
+  sca_sha256       TEXT,
+  preview_key      TEXT,
+  preview_type     TEXT,
+  preview_size     INTEGER,
+  preview_width    INTEGER,
+  preview_height   INTEGER,
+  preview_sha256   TEXT
 );
 CREATE INDEX idx_tracks_uploaded_at ON tracks(uploaded_at DESC);

@@ -1,5 +1,6 @@
 import { html, raw } from 'hono/html'
 import type { SessionUser } from './types'
+import { PREVIEW_RULES } from './validate'
 
 const discordLogo = raw(`
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-discord" viewBox="0 0 16 16">
@@ -73,6 +74,7 @@ export const CSS = `
   .track-creator{color:var(--muted);font-size:.9rem}
   .track-body{padding:0 1.25rem 1.25rem;border-top:1px solid var(--border)}
   .meta{color:var(--muted);font-size:.9rem;margin:.75rem 0 0}
+  .preview{display:block;max-width:min(100%,320px);height:auto;margin-top:.75rem;border:1px solid var(--border);border-radius:9px}
   label{display:block;margin:1rem 0 0;font-weight:600;font-size:.92rem}
   label>input,label>textarea{margin-top:.35rem}
   input,textarea{display:block;width:100%;padding:.6rem .75rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:9px;font:inherit;font-weight:400}
@@ -232,6 +234,8 @@ export const uploadPage = (u: SessionUser) =>
       <label class="full">.lev file <input name="lev" type="file" accept=".lev" required></label>
       <label class="full">.vrm file (optional) <input name="vrm" type="file" accept=".vrm"></label>
       <label class="full">.sca file (optional) <input name="sca" type="file" accept=".sca"></label>
+      <label class="full">Preview image (optional) <input name="preview" type="file" accept="image/png,image/jpeg"></label>
+      <p class="meta full">PNG or JPEG, up to ${PREVIEW_RULES.maxBytes / 1024 / 1024} MB and ${PREVIEW_RULES.maxWidth}x${PREVIEW_RULES.maxHeight}. 16:9 screenshots work best.</p>
     </div>
     <p class="meta">Unfamiliar with .sca files? See the
       <a href="https://github.com/Garma1337/howl-editor/blob/main/documentation/formats/sca.md" target="_blank">.sca format documentation</a>.
@@ -243,7 +247,8 @@ export const uploadPage = (u: SessionUser) =>
 
 export const ADMIN_JS = `
 async function api(method, url, body) {
-  var res = await fetch(url, { method: method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+  var isJson = body && !(body instanceof FormData);
+  var res = await fetch(url, { method: method, headers: isJson ? { 'Content-Type': 'application/json' } : {}, body: isJson ? JSON.stringify(body) : body });
   var data = await res.json().catch(function () { return {}; });
   if (!res.ok) { alert(data.error || ('Error ' + res.status)); throw new Error('request failed'); }
   return data;
@@ -292,11 +297,32 @@ async function loadTracks() {
     }
     var title = h('h3', { className: 'track-title', text: t.name });
     var creator = h('span', { className: 'track-creator', text: 'by ' + t.creatorName });
+    var p = t.previewImage;
+    var previewInput = h('input', { type: 'file', accept: 'image/png,image/jpeg' });
+    var previewActions = [h('button', { className: 'ghost', text: p ? 'Replace preview' : 'Set preview', onclick: async function () {
+      if (!previewInput.files.length) { alert('Choose an image first'); return; }
+      var body = new FormData();
+      body.append('preview', previewInput.files[0]);
+      await api('PUT', '/admin/api/tracks/' + t.id + '/preview', body);
+      loadTracks();
+    } })];
+    if (p) previewActions.push(h('button', { className: 'ghost', text: 'Remove preview', onclick: async function () {
+      if (!confirm('Remove the preview image of "' + t.name + '"?')) return;
+      await api('DELETE', '/admin/api/tracks/' + t.id + '/preview');
+      loadTracks();
+    } }));
+    var preview = h('div', {}, [
+      p ? h('img', { className: 'preview', src: p.url, alt: 'Preview of ' + t.name, width: p.width, height: p.height, loading: 'lazy' })
+        : h('p', { className: 'meta', text: 'No preview image.' }),
+      h('label', { text: 'Preview image (PNG or JPEG)' }, [previewInput]),
+      h('div', { className: 'actions' }, previewActions)
+    ]);
     var card = h('details', { className: 'card track' }, [
       h('summary', {}, [title, creator, h('code', { text: t.id })]),
       h('div', { className: 'track-body' }, [
         field('Track name', 'name'), field('Description', 'description', 'textarea'),
         h('div', { className: 'grid' }, [field('Creator name', 'creatorName'), field('Created date', 'createdDate', 'date')]),
+        preview,
         h('p', { className: 'meta', text: 'Uploaded by ' + t.uploadedBy + ' on ' + t.uploadedDate }),
         h('div', { className: 'actions' }, [
           h('button', { text: 'Save', onclick: async function () {
