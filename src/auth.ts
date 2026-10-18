@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import type { Context, MiddlewareHandler } from 'hono'
 import type { AppEnv } from './types'
 import { getAuth } from './auth-config'
-import { pendingPage } from './pages'
+import { forbiddenPage, pendingPage } from './pages'
 
 export const auth = new Hono<AppEnv>()
 
@@ -54,9 +54,13 @@ export const loadUser: MiddlewareHandler<AppEnv> = async (c, next) => {
 
 export const guard = (level: 'creator' | 'admin'): MiddlewareHandler<AppEnv> => async (c, next) => {
   const user = c.get('user')
-  const isPage = c.req.method === 'GET'
+  // Only browser navigations get redirects/HTML; fetch() calls (Accept: */*) get JSON errors.
+  const isPage = c.req.method === 'GET' && (c.req.header('accept') ?? '').includes('text/html')
   if (!user) return isPage ? c.redirect('/auth/login') : c.json({ error: 'Not logged in' }, 401)
   const ok = level === 'admin' ? user.isAdmin : user.approved || user.isAdmin
-  if (!ok) return isPage ? c.html(pendingPage(user), 403) : c.json({ error: 'Forbidden' }, 403)
+  if (!ok) {
+    if (!isPage) return c.json({ error: 'Forbidden' }, 403)
+    return c.html(level === 'admin' ? forbiddenPage(user) : pendingPage(user), 403)
+  }
   await next()
 }

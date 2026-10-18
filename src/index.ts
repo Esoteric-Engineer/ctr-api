@@ -4,6 +4,7 @@ import { cors } from 'hono/cors'
 import { csrf } from 'hono/csrf'
 import type { AppEnv, Meta, TrackRow } from './types';
 import { auth, loadUser, guard } from './auth';
+import { adminPage, homePage, uploadPage } from './pages';
 
 
 ////////////// Helper Functions //////////////
@@ -52,7 +53,7 @@ app.use('*', csrf())
 
 app.route('/', auth)
 
-app.get('/', (c) => c.json({ name: 'CTR custom content API', tracks: '/tracks', upload: '/upload' }))
+app.get('/', loadUser, (ctx) => ctx.html(homePage(ctx.get('user'))))
 
 const cdnBase = (base: string) => base.replace(/\/$/, '');
 
@@ -105,8 +106,7 @@ app.get('/files/*', async (ctx) => {
 const creator = new Hono<AppEnv>();
 creator.use('*', loadUser);
 
-// TODO: Create uploadPage and uncomment.
-// creator.get('/', guard('creator'), (ctx) => ctx.html(uploadPage(ctx.get('user')!)));
+creator.get('/', guard('creator'), (ctx) => ctx.html(uploadPage(ctx.get('user')!)));
 
 app.route('/upload', creator)
 
@@ -116,8 +116,7 @@ app.route('/upload', creator)
 const admin = new Hono<AppEnv>();
 admin.use('*', loadUser, guard('admin'));
 
-// TODO: Create adminPage and uncomment.
-// admin.get('/', (ctx) => ctx.html(adminPage(ctx.get('user')!)));
+admin.get('/', (ctx) => ctx.html(adminPage(ctx.get('user')!)));
 
 admin.get('/api/users', async (ctx) => {
   const { results } = await ctx.env.DB.prepare(
