@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.png" alt="Custom Team Racing logo" width="200">
+</p>
+
 # Custom Team Racing API
 
 A public API for Crash Team Racing custom tracks, built with [Hono](https://hono.dev) on Cloudflare Workers.<br />

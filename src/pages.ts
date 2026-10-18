@@ -33,7 +33,8 @@ export const CSS = `
   code{font:.88em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:.1em .4em}
   .topbar{position:relative;z-index:10;background:var(--surface);border-bottom:1px solid var(--border);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
   .topbar-inner{max-width:860px;margin:0 auto;padding:.7rem 1rem;display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap}
-  .brand{font-weight:800;letter-spacing:-.02em;color:var(--text);text-decoration:none;font-size:1.1rem}
+  .brand{display:inline-flex;align-items:center;gap:.6rem;font-weight:800;letter-spacing:-.02em;color:var(--text);text-decoration:none;font-size:1.1rem}
+  .brand-logo{display:block;width:32px;height:32px}
   .brand span{color:var(--accent)}
   .nav-links{display:flex;gap:.25rem;flex:1;flex-wrap:wrap}
   .nav-links a{color:var(--muted);text-decoration:none;padding:.35rem .7rem;border-radius:8px;font-weight:500}
@@ -92,7 +93,8 @@ export const CSS = `
   .badge.ok{color:var(--ok);border-color:currentColor;background:transparent}
   .empty{color:var(--muted);text-align:center;padding:1.5rem}
   .msg{margin-top:1rem;font-weight:600;min-height:1.5em}
-  .hero{padding:2.5rem}
+  .hero{padding:2.5rem;display:flex;align-items:center;gap:2rem;flex-wrap:wrap}
+  .hero-logo{display:block;width:160px;height:160px;flex:none}
   .hero h1{font-size:2.4rem}
   .hero .actions{margin-top:1.5rem}
   .btn-link{display:inline-block;padding:.55rem 1.1rem;border-radius:9px;background:var(--accent);color:var(--accent-text);font-weight:600;text-decoration:none}
@@ -109,13 +111,13 @@ const layout = (title: string, nav: unknown, body: unknown) => html`<!doctype ht
 <style>${raw(CSS)}</style></head><body>${nav}<main>${body}</main></body></html>`
 
 const guestNav = html`<header class="topbar"><div class="topbar-inner">
-  <a class="brand" href="/">Custom Team Racing API</a>
+  <a class="brand" href="/"><img class="brand-logo" src="/logo.png" alt="" width="32" height="32">Custom Team Racing API</a>
   <nav class="nav-links"><a href="/docs">Docs</a><a href="/submit">Submit</a></nav>
   <div class="nav-user"><a class="with-icon" href="/auth/login">${discordLogo} Log In</a></div>
 </div></header>`
 
 const nav = (u: SessionUser) => html`<header class="topbar"><div class="topbar-inner">
-  <a class="brand" href="/">Custom Team Racing API</a>
+  <a class="brand" href="/"><img class="brand-logo" src="/logo.png" alt="" width="32" height="32">Custom Team Racing API</a>
   <nav class="nav-links">
     <a href="/docs">Docs</a>
     <a href="/submit">Submit</a>
@@ -137,6 +139,8 @@ const nav = (u: SessionUser) => html`<header class="topbar"><div class="topbar-i
 
 export const homePage = (u: SessionUser | null) =>
   layout('Custom Team Racing API', u ? nav(u) : guestNav, html`<section class="hero panel">
+    <img class="hero-logo" src="/logo.png" alt="Custom Team Racing logo" width="160" height="160">
+    <div class="hero-text">
     <h1>Custom Team Racing API</h1>
     <p class="lead">An API for Crash Team Racing custom tracks and other custom content.</p>
     <div class="actions">
@@ -144,6 +148,7 @@ export const homePage = (u: SessionUser | null) =>
       ${u && (u.approved || u.isAdmin)
         ? html`<a class="btn-link ghost" href="/upload">Upload a track</a>`
         : html`<a class="btn-link ghost" href="/submit">Submit Content</a>`}
+    </div>
     </div>
   </section>`)
 
